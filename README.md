@@ -1,7 +1,6 @@
-
-
-
 # CLIF: Campus Lost Item Finder
+
+![LOGO](/logo.png)
 
 **Digital Lost-and-found display app** 
 
