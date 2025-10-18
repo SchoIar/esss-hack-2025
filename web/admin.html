@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin (Minimal) • Insert Item</title>
+  <title>Admin • Insert Item</title>
   <style>
     :root { --fg:#111; --muted:#666; --ok:#0a6; --err:#b00; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 680px; margin: 32px auto; padding: 0 16px; color: var(--fg); }
@@ -11,7 +11,7 @@
     .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin: 12px 0; }
     .row { display: grid; gap: 8px; margin: 8px 0; }
     label { font-size: 12px; color: var(--muted); }
-    input, textarea, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; }
+    input, textarea, select, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; }
     button { cursor: pointer; border: 0; background: #111; color: #fff; }
     .muted { color: var(--muted); }
     .msg { padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #f9fafb; margin-top: 8px; white-space: pre-wrap; }
@@ -23,9 +23,9 @@
 </head>
 <body>
   <h1>Admin • Insert</h1>
-  <p class="muted">Sign in to add <code>item</code>s</p>
+  <p class="muted">Insert items now!>
 
-  <!-- CONFIG (edit these two lines) -->
+  <!-- CONFIG -->
   <script>
     window.__SUPABASE_URL__ = 'https://uwclseatqvcdjmgoyuae.supabase.co';
     window.__SUPABASE_ANON_KEY__ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3Y2xzZWF0cXZjZGptZ295dWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NTI4MDYsImV4cCI6MjA3NjMyODgwNn0.mb6FxWJgjvc2X-NQtBj5iOVtT5hBuxBFO80b0Fqhl3o';
@@ -40,20 +40,42 @@
     <div id="authMsg" class="msg hidden"></div>
   </div>
 
-  <!-- INSERT (DESK BY NAME) -->
+  <!-- INSERT -->
   <div id="insertCard" class="card hidden">
     <div class="row" style="margin-bottom:4px;">
       <strong id="whoami"></strong>
       <button id="btnSignOut" style="justify-self:flex-start;background:#444">Sign out</button>
     </div>
     <h3>Insert item</h3>
-    <div class="row"><label>Desk name (must already exist)</label><input id="desk_name" placeholder="e.g., AQ Security Desk"></div>
+
+    <div class="row">
+      <label>Desk</label>
+      <select id="desk_select"><option value="">Loading…</option></select>
+    </div>
+
     <div class="row"><label>Title (required)</label><input id="title" placeholder="e.g., Student ID"></div>
     <div class="row"><label>Description</label><textarea id="desc" rows="3" placeholder="Optional"></textarea></div>
-    <div class="row"><label>Category</label><input id="category" placeholder="Optional (e.g., ID, Electronics)"></div>
+
+    <div class="row">
+      <label>Category</label>
+      <select id="category_select">
+        <option value="Electronics">Electronics</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Bags">Bags</option>
+        <option value="Wallets">Wallets</option>
+        <option value="Keys">Keys</option>
+        <option value="Cards">Cards</option>
+        <option value="Jewelry">Jewelry</option>
+        <option value="Documents">Documents</option>
+        <option value="ID">ID</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
     <div class="row"><label>Found location text</label><input id="found_loc" placeholder="Optional"></div>
     <div class="row"><label>Found date (YYYY-MM-DD)</label><input id="found_date" type="date"></div>
     <div class="row"><label>Photo (optional)</label><input id="photo" type="file" accept="image/*"></div>
+
     <button id="btnInsert">Insert</button>
     <div id="insMsg" class="msg hidden"></div>
   </div>
@@ -67,35 +89,40 @@
     const $ = (id) => document.getElementById(id)
     const authCard = $('authCard'), authMsg = $('authMsg'), btnSignIn = $('btnSignIn')
     const insertCard = $('insertCard'), whoami = $('whoami'), btnSignOut = $('btnSignOut')
-
-    const desk_name = $('desk_name')
-    const title = $('title'), desc = $('desc'), category = $('category'), found_loc = $('found_loc'), found_date = $('found_date')
+    const desk_select = $('desk_select')
+    const title = $('title'), desc = $('desc'), category_select = $('category_select'), found_loc = $('found_loc'), found_date = $('found_date')
     const photo = $('photo')
     const btnInsert = $('btnInsert'), insMsg = $('insMsg')
 
     const show = (el)=>el.classList.remove('hidden'); const hide=(el)=>el.classList.add('hidden')
     const msg = (el, text, ok=false)=>{ el.textContent = text; el.classList.toggle('ok', !!ok); el.classList.toggle('err', !ok); show(el) }
 
-    // Staff check (RLS-safe, runs as the signed-in user)
+    // Staff check
     async function isStaff(uid){
       const { data, error } = await supabase.schema('public').from('staff_user').select('id').eq('id', uid).maybeSingle()
       if (error) throw error
       return !!data
     }
 
+    async function loadDesks(){
+      desk_select.innerHTML = '<option value="">Loading…</option>'
+      const { data, error } = await supabase.schema('public').from('desk').select('id,name').order('name')
+      if (error){ desk_select.innerHTML = '<option value="">Error loading desks</option>'; return }
+      if (!data?.length){ desk_select.innerHTML = '<option value="">No desks found</option>'; return }
+      desk_select.innerHTML = data.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')
+    }
+
     async function showInsert(session){
       whoami.textContent = `Signed in as ${session.user.email}`
       hide(authCard); hide(authMsg); show(insertCard)
+      await loadDesks()
     }
 
     // Bootstrap existing session
     (async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        try {
-          if (await isStaff(session.user.id)) return showInsert(session)
-          await supabase.auth.signOut()
-        } catch { /* fall through */ }
+        try { if (await isStaff(session.user.id)) return showInsert(session); await supabase.auth.signOut() } catch {}
       }
       show(authCard)
     })()
@@ -110,7 +137,7 @@
       try {
         const ok = await isStaff(data.session.user.id)
         if (!ok) { await supabase.auth.signOut(); return msg(authMsg, 'Signed in but not in staff_user.', false) }
-        showInsert(data.session)
+        await showInsert(data.session)
       } catch (e) { msg(authMsg, 'Staff check failed: ' + e.message) }
     })
 
@@ -119,41 +146,25 @@
       await supabase.auth.signOut(); hide(insertCard); show(authCard)
     })
 
-    // === FUNCTIONAL INSERT (DESK BY NAME) ===
-    async function lookupDeskIdByName(name) {
-      const { data, error } = await supabase.schema('public')
-        .from('desk')
-        .select('id,name')
-        .eq('name', name)
-        .limit(1)
-        .maybeSingle()
-      if (error) throw error
-      if (!data) throw new Error(`Desk named "${name}" not found. Seed it first.`)
-      return data.id
-    }
-
+    // INSERT (desk by dropdown UUID; category by dropdown)
     btnInsert.addEventListener('click', async () => {
       hide(insMsg)
-      const dn = (desk_name.value || '').trim()
+      const deskId = (desk_select.value || '').trim()  // UUID string
       const t = (title.value || '').trim()
       const d = (desc.value || '').trim() || null
-      const c = (category.value || '').trim() || null
+      const c = (category_select.value || '').trim() || null
       const fl = (found_loc.value || '').trim() || null
-      const fd = found_date.value ? found_date.value : null // send YYYY-MM-DD for DATE columns
+      const fd = found_date.value ? found_date.value : null  // DATE column
 
-      if (!dn) return msg(insMsg, 'Desk name is required.')
+      if (!deskId) return msg(insMsg, 'Choose a desk.')
       if (!t) return msg(insMsg, 'Title is required.')
 
       try {
-        // 3) Lookup desk id by NAME (schema('public'))
-        const DESK_ID = await lookupDeskIdByName(dn)
-
-        // 4) Create the item (RLS allows because you’re logged in as staff)
-        const item_payload = { desk_id: DESK_ID, title: t, description: d, category: c, found_date: fd, found_location_text: fl }
+        // Insert item
         const { data: itemRow, error: insErr } = await supabase
           .schema('public')
           .from('item')
-          .insert(item_payload)
+          .insert({ desk_id: deskId, title: t, description: d, category: c, found_date: fd, found_location_text: fl })
           .select('id')
           .maybeSingle()
         if (insErr) throw insErr
@@ -161,41 +172,35 @@
 
         const item_id = itemRow.id
 
-        // 5) Upload photo (optional) to bucket 'items'
+        // Optional photo upload
         const file = photo.files?.[0]
         let storage_key = null
         if (file) {
           const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
           storage_key = `${item_id}/${crypto.randomUUID()}.${ext}`
-          const { error: upErr } = await supabase
-            .storage
-            .from('items')
-            .upload(storage_key, file, { contentType: file.type || 'image/jpeg', upsert: true })
+          const { error: upErr } = await supabase.storage.from('items').upload(storage_key, file, {
+            contentType: file.type || 'image/jpeg',
+            upsert: true
+          })
           if (upErr) throw upErr
-        }
-
-        // 6) Register photo in DB
-        if (storage_key) {
           const db_path = `items/${storage_key}`
-          const { error: linkErr } = await supabase
-            .schema('public')
-            .from('item_photo')
-            .insert({ item_id, path: db_path, sort_order: 0 })
+          const { error: linkErr } = await supabase.schema('public').from('item_photo').insert({ item_id, path: db_path, sort_order: 0 })
           if (linkErr) throw linkErr
         }
 
-        // 7) Print public URL (if any)
+        // Public URL (if any)
         let pubUrl = ''
         if (storage_key) {
           const { data: pub } = await supabase.storage.from('items').getPublicUrl(storage_key)
           pubUrl = pub?.publicUrl || ''
         }
 
-        msg(insMsg, `Inserted ✔
+        msg(insMsg, `Inserted
 Item ID: ${item_id}${pubUrl ? `
 Photo: ${pubUrl}` : ''}`, true)
-        // reset inputs minimally
-        title.value = ''; desc.value = ''; category.value = ''; found_loc.value = ''; found_date.value = ''; photo.value=''
+
+        // reset fields
+        title.value = ''; desc.value = ''; category_select.value = 'Electronics'; found_loc.value = ''; found_date.value = ''; photo.value=''
       } catch (e) {
         msg(insMsg, 'Insert failed: ' + (e?.message || e))
       }
