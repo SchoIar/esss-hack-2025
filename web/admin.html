@@ -3,27 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin • Insert Item</title>
+  <title>Admin Panel</title>
   <style>
     :root { --fg:#111; --muted:#666; --ok:#0a6; --err:#b00; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 680px; margin: 32px auto; padding: 0 16px; color: var(--fg); }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 860px; margin: 32px auto; padding: 0 16px; color: var(--fg); }
     h1 { margin: 0 0 12px; }
     .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin: 12px 0; }
     .row { display: grid; gap: 8px; margin: 8px 0; }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 12px; }
     label { font-size: 12px; color: var(--muted); }
     input, textarea, select, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; }
     button { cursor: pointer; border: 0; background: #111; color: #fff; }
     .muted { color: var(--muted); }
-    .msg { padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #f9fafb; margin-top: 8px; white-space: pre-wrap; }
+    .msg { padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #f9fafb; white-space: pre-wrap; }
     .ok { border-color: #bde7d2; background: #eefbf4; color: var(--ok); }
     .err { border-color: #ffd1d1; background: #fff5f5; color: var(--err); }
     .hidden { display: none; }
-    code { background: #f3f4f6; padding: 1px 6px; border-radius: 6px; }
+    .pill { border-radius: 24px; }
+    .tabs { display: flex; gap: 8px; margin: 8px 0 0; }
+    .tab { background:#f3f4f6; color:#111; }
+    .tab.active { background:#111; color:#fff; }
+    .preview { font-size:14px; color:var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   </style>
 </head>
 <body>
-  <h1>Admin • Insert</h1>
-  <p class="muted">Insert items now!>
+  <h1>Admin Panel</h1>
+  <p class="muted">Sign in to modify items!</p>
 
   <!-- CONFIG -->
   <script>
@@ -34,76 +40,124 @@
   <!-- LOGIN -->
   <div id="authCard" class="card">
     <h3>Sign in</h3>
-    <div class="row"><label>Email</label><input id="email" type="email" autocomplete="username" required></div>
-    <div class="row"><label>Password</label><input id="password" type="password" autocomplete="current-password" required></div>
+    <div class="cols">
+      <div class="row"><label>Email</label><input id="email" type="email" autocomplete="username" required></div>
+      <div class="row"><label>Password</label><input id="password" type="password" autocomplete="current-password" required></div>
+    </div>
     <button id="btnSignIn">Sign in</button>
-    <div id="authMsg" class="msg hidden"></div>
+    <div id="authMsg" class="msg hidden" style="margin-top:8px;"></div>
   </div>
 
-  <!-- INSERT -->
-  <div id="insertCard" class="card hidden">
-    <div class="row" style="margin-bottom:4px;">
+  <!-- MANAGE -->
+  <div id="manageCard" class="card hidden">
+    <div class="cols" style="align-items:center;margin-bottom:6px;">
       <strong id="whoami"></strong>
-      <button id="btnSignOut" style="justify-self:flex-start;background:#444">Sign out</button>
-    </div>
-    <h3>Insert item</h3>
-
-    <div class="row">
-      <label>Desk</label>
-      <select id="desk_select"><option value="">Loading…</option></select>
+      <div style="justify-self:end;display:flex;gap:8px;">
+        <button id="btnRefresh" class="pill" title="Reload data">Refresh</button>
+        <button id="btnSignOut" class="pill" style="background:#444">Sign out</button>
+      </div>
     </div>
 
-    <div class="row"><label>Title (required)</label><input id="title" placeholder="e.g., Student ID"></div>
-    <div class="row"><label>Description</label><textarea id="desc" rows="3" placeholder="Optional"></textarea></div>
-
-    <div class="row">
-      <label>Category</label>
-      <select id="category_select">
-        <option value="Electronics">Electronics</option>
-        <option value="Clothing">Clothing</option>
-        <option value="Bags">Bags</option>
-        <option value="Wallets">Wallets</option>
-        <option value="Keys">Keys</option>
-        <option value="Cards">Cards</option>
-        <option value="Jewelry">Jewelry</option>
-        <option value="Documents">Documents</option>
-        <option value="ID">ID</option>
-        <option value="Other">Other</option>
-      </select>
+    <div class="tabs">
+      <button id="tabInsert" class="tab active">Insert</button>
+      <button id="tabRemove" class="tab">Remove</button>
     </div>
 
-    <div class="row"><label>Found location text</label><input id="found_loc" placeholder="Optional"></div>
-    <div class="row"><label>Found date (YYYY-MM-DD)</label><input id="found_date" type="date"></div>
-    <div class="row"><label>Photo (optional)</label><input id="photo" type="file" accept="image/*"></div>
+    <!-- INSERT PANEL -->
+    <div id="panelInsert">
+      <h3 style="margin-top:10px">Insert item</h3>
+      <div class="cols">
+        <div class="row">
+          <label>Desk</label>
+          <select id="desk_select"><option value="">Loading…</option></select>
+        </div>
+        <div class="row">
+          <label>Category</label>
+          <select id="category_select">
+            <option value="Electronics">Electronics</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Bags">Bags</option>
+            <option value="Wallets">Wallets</option>
+            <option value="Keys">Keys</option>
+            <option value="Cards">Cards</option>
+            <option value="Jewelry">Jewelry</option>
+            <option value="Documents">Documents</option>
+            <option value="ID">ID</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="row"><label>Title (required)</label><input id="title" placeholder="e.g., Student ID"></div>
+      <div class="row"><label>Description</label><textarea id="desc" rows="3" placeholder="Optional"></textarea></div>
+      <div class="cols">
+        <div class="row"><label>Found location text</label><input id="found_loc" placeholder="Optional"></div>
+        <div class="row"><label>Found date (YYYY-MM-DD)</label><input id="found_date" type="date"></div>
+      </div>
+      <div class="row"><label>Photo (optional)</label><input id="photo" type="file" accept="image/*"></div>
+      <button id="btnInsert" class="pill">Insert</button>
+      <div id="insMsg" class="msg hidden" style="margin-top:8px;"></div>
+    </div>
 
-    <button id="btnInsert">Insert</button>
-    <div id="insMsg" class="msg hidden"></div>
+    <!-- REMOVE PANEL -->
+    <div id="panelRemove" class="hidden">
+      <h3 style="margin-top:10px">Remove item</h3>
+      <div class="row">
+        <label>Recent items (newest first)</label>
+        <select id="item_select"><option value="">Loading…</option></select>
+      </div>
+      <div class="cols">
+        <div class="row">
+          <label class="mono">Or paste item ID</label>
+          <input id="item_id_input" placeholder="item UUID">
+        </div>
+        <div class="row" style="align-items:end;">
+          <button id="btnLoad" class="pill">Load</button>
+        </div>
+      </div>
+      <div id="preview" class="preview hidden" style="margin:8px 0 0;"></div>
+      <div class="row" style="margin-top:8px;">
+        <button id="btnDelete" class="pill" style="background:#b00">Delete item</button>
+      </div>
+      <div id="rmMsg" class="msg hidden" style="margin-top:8px;"></div>
+    </div>
   </div>
 
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
     const supabase = createClient(window.__SUPABASE_URL__, window.__SUPABASE_ANON_KEY__)
 
-    // DOM
+    // --- DOM ---
     const $ = (id) => document.getElementById(id)
     const authCard = $('authCard'), authMsg = $('authMsg'), btnSignIn = $('btnSignIn')
-    const insertCard = $('insertCard'), whoami = $('whoami'), btnSignOut = $('btnSignOut')
-    const desk_select = $('desk_select')
-    const title = $('title'), desc = $('desc'), category_select = $('category_select'), found_loc = $('found_loc'), found_date = $('found_date')
-    const photo = $('photo')
+    const manageCard = $('manageCard'), whoami = $('whoami'), btnSignOut = $('btnSignOut'), btnRefresh = $('btnRefresh')
+    const tabInsert = $('tabInsert'), tabRemove = $('tabRemove'), panelInsert = $('panelInsert'), panelRemove = $('panelRemove')
+
+    // insert
+    const desk_select = $('desk_select'), category_select = $('category_select'), title = $('title'), desc = $('desc'), found_loc = $('found_loc'), found_date = $('found_date'), photo = $('photo')
     const btnInsert = $('btnInsert'), insMsg = $('insMsg')
 
-    const show = (el)=>el.classList.remove('hidden'); const hide=(el)=>el.classList.add('hidden')
-    const msg = (el, text, ok=false)=>{ el.textContent = text; el.classList.toggle('ok', !!ok); el.classList.toggle('err', !ok); show(el) }
+    // remove
+    const item_select = $('item_select'), item_id_input = $('item_id_input'), btnLoad = $('btnLoad'), btnDelete = $('btnDelete'), preview = $('preview'), rmMsg = $('rmMsg')
 
-    // Staff check
+    const show = (el)=>el.classList.remove('hidden'); const hide=(el)=>el.classList.add('hidden')
+    const msg  = (el,text,ok=false)=>{ el.textContent=text; el.classList.toggle('ok',!!ok); el.classList.toggle('err',!ok); show(el) }
+
+    // --- Tabs ---
+    function activate(tab){
+      if (tab==='insert'){ tabInsert.classList.add('active'); tabRemove.classList.remove('active'); show(panelInsert); hide(panelRemove) }
+      else { tabRemove.classList.add('active'); tabInsert.classList.remove('active'); show(panelRemove); hide(panelInsert) }
+    }
+    tabInsert.onclick = ()=>activate('insert')
+    tabRemove.onclick = ()=>activate('remove')
+
+    // --- Staff check ---
     async function isStaff(uid){
       const { data, error } = await supabase.schema('public').from('staff_user').select('id').eq('id', uid).maybeSingle()
       if (error) throw error
       return !!data
     }
 
+    // --- Load data ---
     async function loadDesks(){
       desk_select.innerHTML = '<option value="">Loading…</option>'
       const { data, error } = await supabase.schema('public').from('desk').select('id,name').order('name')
@@ -111,100 +165,141 @@
       if (!data?.length){ desk_select.innerHTML = '<option value="">No desks found</option>'; return }
       desk_select.innerHTML = data.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')
     }
-
-    async function showInsert(session){
-      whoami.textContent = `Signed in as ${session.user.email}`
-      hide(authCard); hide(authMsg); show(insertCard)
-      await loadDesks()
+    async function loadRecentItems(){
+      item_select.innerHTML = '<option value="">Loading…</option>'
+      const { data, error } = await supabase.schema('public').from('item').select('id,title,created_at,desk:desk_id(name)').order('created_at',{ascending:false}).limit(50)
+      if (error){ item_select.innerHTML = '<option value="">Error loading items</option>'; return }
+      if (!data?.length){ item_select.innerHTML = '<option value="">No items found</option>'; return }
+      item_select.innerHTML = data.map(i=>{
+        const d = i.desk?.name ? ` • ${i.desk.name}` : ''
+        const t = (i.title||'(no title)').slice(0,60)
+        return `<option value="${i.id}">${t}${d}</option>`
+      }).join('')
+    }
+    async function previewItem(itemId){
+      hide(preview)
+      const { data:item, error } = await supabase.schema('public').from('item')
+        .select('id,title,description,desk:desk_id(name),item_photo(path)')
+        .eq('id', itemId).maybeSingle()
+      if (error) throw error
+      if (!item) throw new Error('Item not found.')
+      const photoPath = item.item_photo?.[0]?.path
+      const url = photoPath ? supabase.storage.from('items').getPublicUrl(photoPath.replace(/^items\//,'')).data.publicUrl : null
+      preview.innerHTML = `
+        <div><strong>ID:</strong> <span class="mono">${item.id}</span></div>
+        <div><strong>Title:</strong> ${item.title||'(none)'} ${item.desk?.name?`• <em>${item.desk.name}</em>`:''}</div>
+        ${url?`<div><strong>Photo:</strong> <a href="${url}" target="_blank" rel="noopener">open</a></div>`:''}
+      `
+      show(preview)
     }
 
-    // Bootstrap existing session
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+    // --- Show manage after login ---
+    async function showManage(session){
+      whoami.textContent = `Signed in as ${session.user.email}`
+      hide(authCard); hide(authMsg); show(manageCard)
+      await Promise.all([loadDesks(), loadRecentItems()])
+      activate('insert')
+    }
+
+    // --- Bootstrap session ---
+    ;(async () => {
+      const { data:{ session } } = await supabase.auth.getSession()
       if (session) {
-        try { if (await isStaff(session.user.id)) return showInsert(session); await supabase.auth.signOut() } catch {}
+        try { if (await isStaff(session.user.id)) return showManage(session); await supabase.auth.signOut() } catch {}
       }
       show(authCard)
     })()
 
-    // Sign in
-    btnSignIn.addEventListener('click', async () => {
+    // --- Auth buttons ---
+    btnSignIn.onclick = async () => {
       hide(authMsg)
-      const email = $('email').value.trim(); const password = $('password').value
-      if (!email || !password) return msg(authMsg, 'Enter email and password.')
+      const email = $('email').value.trim(), password = $('password').value
+      if (!email || !password) return msg(authMsg,'Enter email and password.')
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) return msg(authMsg, 'Sign-in error: ' + error.message)
+      if (error) return msg(authMsg,'Sign-in error: '+error.message)
       try {
         const ok = await isStaff(data.session.user.id)
-        if (!ok) { await supabase.auth.signOut(); return msg(authMsg, 'Signed in but not in staff_user.', false) }
-        await showInsert(data.session)
-      } catch (e) { msg(authMsg, 'Staff check failed: ' + e.message) }
-    })
+        if (!ok){ await supabase.auth.signOut(); return msg(authMsg,'Signed in but not in staff_user.',false) }
+        await showManage(data.session)
+      } catch(e){ msg(authMsg,'Staff check failed: '+e.message) }
+    }
+    btnSignOut.onclick = async () => { await supabase.auth.signOut(); hide(manageCard); show(authCard) }
+    btnRefresh.onclick  = async () => { await Promise.all([loadDesks(), loadRecentItems()]); msg(insMsg,'',true); msg(rmMsg,'',true); hide(insMsg); hide(rmMsg) }
 
-    // Sign out
-    btnSignOut.addEventListener('click', async () => {
-      await supabase.auth.signOut(); hide(insertCard); show(authCard)
-    })
-
-    // INSERT (desk by dropdown UUID; category by dropdown)
-    btnInsert.addEventListener('click', async () => {
+    // --- INSERT flow ---
+    btnInsert.onclick = async () => {
       hide(insMsg)
-      const deskId = (desk_select.value || '').trim()  // UUID string
-      const t = (title.value || '').trim()
-      const d = (desc.value || '').trim() || null
-      const c = (category_select.value || '').trim() || null
-      const fl = (found_loc.value || '').trim() || null
-      const fd = found_date.value ? found_date.value : null  // DATE column
-
-      if (!deskId) return msg(insMsg, 'Choose a desk.')
-      if (!t) return msg(insMsg, 'Title is required.')
+      const deskId = (desk_select.value||'').trim()
+      const t = (title.value||'').trim()
+      const d = (desc.value||'').trim() || null
+      const c = (category_select.value||'').trim() || null
+      const fl = (found_loc.value||'').trim() || null
+      const fd = found_date.value ? found_date.value : null
+      if (!deskId) return msg(insMsg,'Choose a desk.')
+      if (!t) return msg(insMsg,'Title is required.')
 
       try {
-        // Insert item
-        const { data: itemRow, error: insErr } = await supabase
-          .schema('public')
-          .from('item')
-          .insert({ desk_id: deskId, title: t, description: d, category: c, found_date: fd, found_location_text: fl })
-          .select('id')
-          .maybeSingle()
+        const { data:itemRow, error:insErr } = await supabase.schema('public').from('item')
+          .insert({ desk_id: deskId, title:t, description:d, category:c, found_date:fd, found_location_text:fl })
+          .select('id').maybeSingle()
         if (insErr) throw insErr
         if (!itemRow) throw new Error('Insert returned no row.')
 
-        const item_id = itemRow.id
-
-        // Optional photo upload
-        const file = photo.files?.[0]
         let storage_key = null
-        if (file) {
-          const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-          storage_key = `${item_id}/${crypto.randomUUID()}.${ext}`
-          const { error: upErr } = await supabase.storage.from('items').upload(storage_key, file, {
-            contentType: file.type || 'image/jpeg',
-            upsert: true
-          })
+        const file = photo.files?.[0]
+        if (file){
+          const ext = (file.name.split('.').pop()||'jpg').toLowerCase()
+          storage_key = `${itemRow.id}/${crypto.randomUUID()}.${ext}`
+          const { error:upErr } = await supabase.storage.from('items').upload(storage_key, file, { contentType:file.type||'image/jpeg', upsert:true })
           if (upErr) throw upErr
           const db_path = `items/${storage_key}`
-          const { error: linkErr } = await supabase.schema('public').from('item_photo').insert({ item_id, path: db_path, sort_order: 0 })
+          const { error:linkErr } = await supabase.schema('public').from('item_photo').insert({ item_id:itemRow.id, path:db_path, sort_order:0 })
           if (linkErr) throw linkErr
         }
-
-        // Public URL (if any)
         let pubUrl = ''
-        if (storage_key) {
-          const { data: pub } = await supabase.storage.from('items').getPublicUrl(storage_key)
+        if (storage_key){
+          const { data:pub } = await supabase.storage.from('items').getPublicUrl(storage_key)
           pubUrl = pub?.publicUrl || ''
         }
+        msg(insMsg, `Inserted ✔\nItem ID: ${itemRow.id}${pubUrl?`\nPhoto: ${pubUrl}`:''}`, true)
+        title.value=''; desc.value=''; found_loc.value=''; found_date.value=''; photo.value=''
+        await loadRecentItems()
+      } catch(e){ msg(insMsg, 'Insert failed: '+(e?.message||e)) }
+    }
 
-        msg(insMsg, `Inserted
-Item ID: ${item_id}${pubUrl ? `
-Photo: ${pubUrl}` : ''}`, true)
+    // --- REMOVE flow ---
+    btnLoad.onclick = async () => {
+      hide(rmMsg)
+      const id = (item_id_input.value||'').trim() || (item_select.value||'').trim()
+      if (!id) return msg(rmMsg,'Pick an item or paste an ID.')
+      try { await previewItem(id) } catch(e){ msg(rmMsg,'Load failed: '+(e?.message||e)) }
+    }
 
-        // reset fields
-        title.value = ''; desc.value = ''; category_select.value = 'Electronics'; found_loc.value = ''; found_date.value = ''; photo.value=''
-      } catch (e) {
-        msg(insMsg, 'Insert failed: ' + (e?.message || e))
-      }
-    })
+    btnDelete.onclick = async () => {
+      hide(rmMsg)
+      const id = (item_id_input.value||'').trim() || (item_select.value||'').trim()
+      if (!id) return msg(rmMsg,'Pick an item or paste an ID.')
+      if (!confirm('Delete this item and its photos? This cannot be undone.')) return
+      try {
+        const { data:photos, error:phErr } = await supabase.schema('public').from('item_photo').select('path').eq('item_id', id)
+        if (phErr) throw phErr
+        if (photos?.length){
+          const keys = photos.map(p => (p.path||'').replace(/^items\//,'')).filter(Boolean)
+          if (keys.length){
+            const { error:stErr } = await supabase.storage.from('items').remove(keys)
+            if (stErr) throw stErr
+          }
+        }
+        const { error:delPhErr } = await supabase.schema('public').from('item_photo').delete().eq('item_id', id)
+        if (delPhErr) throw delPhErr
+        const { error:delItemErr } = await supabase.schema('public').from('item').delete().eq('id', id)
+        if (delItemErr) throw delItemErr
+
+        msg(rmMsg, `Deleted ✔\nItem ID: ${id}`, true)
+        preview.textContent=''; hide(preview); item_id_input.value=''; item_select.value=''
+        await loadRecentItems()
+      } catch(e){ msg(rmMsg,'Delete failed: '+(e?.message||e)) }
+    }
   </script>
 </body>
 </html>
