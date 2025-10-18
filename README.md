@@ -10,8 +10,17 @@ Ever lost something on campus and sprinted between five different offices? Skip 
 
 ### Components
 
-1. **[SQL-driven database](./data/)** - 
-2. **[Web App](./web/)** - 
+1. **[Database](./data/)** - Postgres database (Supabase)
+2. **[Web App](./web/)** - Web app, includes admin panel and user interface. 
 
 ---
 ## Technology Stack
+
+
+See **components** for further details.
+- **Web app (mockups/admin panel):** built with plain **HTML, CSS, and JavaScript** (no framework). Uses `@supabase/supabase-js` for data access.
+- **Database:** PostgreSQL on **Supabase** (RLS enabled). 
+- **Auth:** **Supabase Auth** (email/password) with session tokens for write access.
+
+## Getting Started
+See  **components** for further details.
