@@ -46,3 +46,15 @@ create table if not exists item_photo (
 );
 
 create index if not exists idx_item_photo_item on item_photo(item_id, sort_order);
+
+-- Authentication via RLS (staff users - IDs match Supabase auth.users.id)
+create table if not exists staff_user (
+  id uuid primary key,                          -- auth.users.id
+  created_at timestamptz not null default now()
+);
+
+alter table staff_user enable row level security;
+
+create policy if not exists staff_read_self on staff_user
+for select to authenticated
+using (true);
