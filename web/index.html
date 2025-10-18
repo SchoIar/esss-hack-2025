@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lost & Found - ESSS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Lost & Found</h1>
+            <p class="subtitle">Find your lost items on campus</p>
+        </header>
+
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="Search items..." />
+            <select id="categoryFilter">
+                <option value="">All Categories</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Clothing">Clothing</option>
+                <option value="Bags">Bags</option>
+                <option value="Wallets">Wallets</option>
+                <option value="Keys">Keys</option>
+                <option value="Cards">Cards</option>
+                <option value="Jewelry">Jewelry</option>
+                <option value="Documents">Documents</option>
+                <option value="ID">ID</option>
+                <option value="Other">Other</option>
+            </select>
+            <select id="deskFilter">
+                <option value="">All Desks</option>
+            </select>
+        </div>
+
+        <div id="loading" class="loading">Loading items...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="itemsGrid" class="items-grid">
+            <!-- Items will be dynamically loaded here -->
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
