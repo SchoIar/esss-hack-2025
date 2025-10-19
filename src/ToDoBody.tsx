@@ -4,44 +4,45 @@ import { ITheme, mergeStyleSets, getFocusStyle } from '@fluentui/react/lib/Styli
 import { useConst } from '@fluentui/react-hooks';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { Icon, Stack, TextField } from '@fluentui/react';
-import { getTheme } from '@fluentui/react';
-import VerticalSidebar from './VerticalSidebar';
 import { useNavigate } from 'react-router-dom';
-
+import VerticalSidebar from './VerticalSidebar';
+import { supabase } from './supabaseClient';
 
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
 initializeIcons();
 
-
 export interface IExampleItem {
-    name: string;
-    time: string
-    location: string,
-    description: string;
+  id: string;
+  name: string;
+  time: string;
+  location: string;
+  description: string;
+  category?: string;
+  found_date?: string;
+  item_photo?: { path: string }[];
 }
 
-/* HARD CODED ITEM NAME, TIME, DESCRIPTION */
-const createListItems = (): IExampleItem[] => [
-  { name: 'Item 1', time: 'Time 1', location:'ASB', description: 'Description 1' },
-  { name: 'Item 2', time: 'Time 2',  location:'WMC', description: 'Description 2' },
-  { name: 'Item 3', time: 'Time 3', location:'SUB', description: 'Description 3' },
-  { name: 'Item 4', time: 'Time 4', location:'Library', description: 'Description 4' },
-  { name: 'Item 5', time: 'Time 5',  location:'Gym', description: 'Description 5' },
-];
-
+/* HARD CODED ITEM NAME, TIME, DESCRIPTION (commented out now) */
+// const createListItems = (): IExampleItem[] => [
+//   { name: 'Item 1', time: 'Time 1', location:'ASB', description: 'Description 1' },
+//   { name: 'Item 2', time: 'Time 2',  location:'WMC', description: 'Description 2' },
+//   { name: 'Item 3', time: 'Time 3', location:'SUB', description: 'Description 3' },
+//   { name: 'Item 4', time: 'Time 4', location:'Library', description: 'Description 4' },
+//   { name: 'Item 5', time: 'Time 5',  location:'Gym', description: 'Description 5' },
+// ];
 
 const generateStyles = (theme: ITheme, isOpen: boolean) => {
   const { palette, fonts, semanticColors } = theme;
   return mergeStyleSets({
     sidebar: {
-      width: isOpen ? 250 : 0, // 0 width if closed
+      width: isOpen ? 250 : 0,
       height: '100vh',
       overflowY: 'auto',
       padding: isOpen ? 10 : 0,
       boxSizing: 'border-box',
       borderRight: `1px solid ${semanticColors.bodyDivider}`,
       backgroundColor: palette.neutralLighter,
-      transition: 'width 0.3s, padding 0.3s', // smooth animation
+      transition: 'width 0.3s, padding 0.3s',
     },
     itemCell: [
       getFocusStyle(theme, { inset: -1 }),
@@ -92,50 +93,108 @@ const generateStyles = (theme: ITheme, isOpen: boolean) => {
     toggleButton: {
       position: 'absolute',
       top: 10,
-      left: isOpen ? 260 : 0, // move button with sidebar
+      left: isOpen ? 260 : 0,
       zIndex: 1000,
       cursor: 'pointer',
       color: 'white',
-      display: 'none'
+      display: 'none',
     },
   });
 };
 
 export const ToDoBody: React.FC = () => {
   const navigate = useNavigate();
-  
+
   const onWarningClick = () => {
-      navigate('/report-missing-item');
+    navigate('/report-missing-item');
   };
-  
-  
-const originalItems = useConst(() => createListItems());
-  const [items, setItems] = React.useState<IExampleItem[]>(originalItems);
-  const [isOpen, setIsOpen] = React.useState(true); // sidebar open/close
+
+  /* --- STATE --- */
+  const [items, setItems] = React.useState<IExampleItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const [isOpen, setIsOpen] = React.useState(true);
   const [selectedItem, setSelectedItem] = React.useState<IExampleItem | null>(null);
+
   const theme = useTheme();
   const classNames = React.useMemo(() => generateStyles(theme, isOpen), [theme, isOpen]);
 
+  /* --- HELPER FUNCTION FOR IMAGE URL --- */
+const getImageUrl = (path?: string) => {
+  if (!path) {
+    return './no-image.jpg'; // your fallback local image
+  }
+
+  // If path already contains bucket folder, use as-is; else prepend
+  const finalPath = path.includes('/') ? path : `items/${path}`;
+  return supabase.storage.from('items').getPublicUrl(finalPath).data.publicUrl;
+};
+
+
+  /* --- FETCH FROM SUPABASE --- */
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('item')
+        .select(`
+          id,
+          title,
+          description,
+          found_date,
+          category,
+          desk:desk_id(id,name),
+          item_photo(path)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Map to your IExampleItem type
+      const mappedItems: IExampleItem[] = (data || []).map((item: any) => ({
+        id: item.id,
+        name: item.title || '(no title)',
+        time: item.found_date || 'Unknown',
+        location: item.desk?.name || 'Unknown',
+        description: item.description || '',
+        category: item.category || undefined,
+        found_date: item.found_date || undefined,
+        item_photo: item.item_photo || [],
+      }));
+
+      setItems(mappedItems);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchItems();
+  }, []);
+
+  /* --- RENDER CELL --- */
   const onRenderCell = React.useCallback(
     (item?: IExampleItem, index?: number): JSX.Element | null => {
       if (!item) return null;
-      return (      
+
+      const imgUrl = getImageUrl(item.item_photo?.[0]?.path); // <-- updated
+
+      return (
         <div
           className={classNames.itemCell}
           data-is-focusable={true}
           onClick={() => setSelectedItem(item)}
           style={{ cursor: 'pointer' }}
         >
-          <img
-            className={classNames.itemImage}
-            src="https://res.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-react-assets/fluent-placeholder.svg"
-            alt="Item image"
-          />
+          <img className={classNames.itemImage} src={imgUrl} alt="Item image" />
           <div className={classNames.itemContent}>
             <div className={classNames.itemName}>{item.name}</div>
             <div className={classNames.itemTime}>{item.time}</div>
             <div className={classNames.itemLocation}>{item.location}</div>
-            {/*<div className={classNames.description}>{item.description}</div>*/}
+            {/* <div className={classNames.description}>{item.description}</div> */}
           </div>
         </div>
       );
@@ -143,114 +202,56 @@ const originalItems = useConst(() => createListItems());
     [classNames]
   );
 
-  //Filter by keyword
+  /* --- FILTER FUNCTION --- */
   const onFilterChanged = (
     _: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-    newValue?: string): void => {
+    newValue?: string
+  ): void => {
     if (!newValue) {
-      setItems(originalItems);
+      fetchItems(); // fetch fresh from Supabase if cleared
       return;
     }
     const lowerText = newValue.toLowerCase();
-    setItems(
-      originalItems.filter(
+    setItems((prev) =>
+      prev.filter(
         (item) =>
           item.name.toLowerCase().includes(lowerText) ||
-          item.description.toLowerCase().includes(lowerText)||
-          item.location.toLowerCase().includes(lowerText)
+          item.description?.toLowerCase().includes(lowerText) ||
+          item.location?.toLowerCase().includes(lowerText)
       )
     );
   };
 
   const handleIconClick = (location: string) => {
-  onFilterChanged(undefined as any, location);
-};
-  
+    setItems((prev) =>
+      prev.filter((item) => item.location?.toLowerCase().includes(location.toLowerCase()))
+    );
+  };
 
+  /* --- MAIN RENDER --- */
   return (
-    <div style={{ display: 'flex', height: '100vh',  border: '2px solid black' }}>
+    <div style={{ display: 'flex', height: '100vh', border: '2px solid black' }}>
+      {loading && <div style={{ position: 'absolute', top: 10, left: 10 }}>Loading...</div>}
+      {error && <div style={{ color: 'red' }}>Error: {error}</div>}
 
-        <span
+      {/* Example map clicks */}
+      <span
         onClick={() => handleIconClick('Library')}
         style={{
-            position: 'absolute',
-            top: '30%',
-            left: '52%',
-            width: '10vw',
-            height: '4vw',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            display: 'inline-block',
+          position: 'absolute',
+          top: '30%',
+          left: '52%',
+          width: '10vw',
+          height: '4vw',
+          backgroundColor: 'transparent',
+          cursor: 'pointer',
+          display: 'inline-block',
         }}
-        ></span>
+      ></span>
 
-        <span
-        onClick={() => handleIconClick('AQ')}
-        style={{
-            position: 'absolute',
-            top: '30%',
-            left: '65%',
-            width: '12vw',
-            height: '10vw',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            display: 'inline-block',
-        }}
-        ></span>
-
-       <span
-        onClick={() => handleIconClick('WMC')}
-        style={{
-            position: 'absolute',
-            top: '32%',
-            left: '35%',
-            width: '10vw',
-            height: '3vw',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            display: 'inline-block',
-        }}
-        ></span>
-
-        <span
-        onClick={() => handleIconClick('Robert C Brown Hall')}
-        style={{
-            position: 'absolute',
-            top: '12%',
-            left: '64%',
-            width: '8vw',
-            height: '9vw',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            display: 'inline-block',
-        }}
-        ></span>
-
-        <span
-        onClick={() => handleIconClick('Education Building')}
-        style={{
-            position: 'absolute',
-            top: '11.5%',
-            left: '72%',
-            width: '7.5vw',
-            height: '9vw',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            display: 'inline-block',
-        }}
-        ></span>
-
-
-       {/* <button onClick={onFilterChanged} text = "filter ASB"} /> */}
       {/* Sidebar */}
-      
-      
-      
-      <div style={{ position: 'relative', marginLeft: '3.3vw'}}>
-        <VerticalSidebar
-            onSearchClick={() => setIsOpen(!isOpen)}
-            onWarningClick={onWarningClick}
-        />
+      <div style={{ position: 'relative', marginLeft: '3.3vw' }}>
+        <VerticalSidebar onSearchClick={() => setIsOpen(!isOpen)} onWarningClick={onWarningClick} />
         <div className={classNames.toggleButton} onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? '⏴' : '⏵'}
         </div>
@@ -274,11 +275,11 @@ const originalItems = useConst(() => createListItems());
         >
           <h3>{selectedItem.name}</h3>
           <p>{selectedItem.time}</p>
-          <p >{selectedItem.location}</p>
-          <p >{selectedItem.description}</p>
+          <p>{selectedItem.location}</p>
+          <p>{selectedItem.description}</p>
           <img
             className={classNames.itemImage}
-            src="https://res.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-react-assets/fluent-placeholder.svg"
+            src={getImageUrl(selectedItem.item_photo?.[0]?.path)} // <-- updated
             alt="Item image"
           />
           <button onClick={() => setSelectedItem(null)}> Close</button>
@@ -286,33 +287,4 @@ const originalItems = useConst(() => createListItems());
       )}
     </div>
   );
-
-  
-
-
-
-
-    /*MAP INTERACTION */
-
-    // const handleClick = () => {
-    // const presetValue = "ASB"; // your predetermined string
-    // onFilterChanged(undefined as any, presetValue);
-    // };
-
-    // Your component
-    // return (
-    // <div onClick={handleClick} style={{ cursor: "pointer" }}>
-    //     Click here to filter
-    // </div>
-    // );
-
-    // <IconButton
-    // iconProps={{ iconName: 'Filter' }}   // any Fluent UI icon
-    // title="Filter by ASB"
-    // ariaLabel="Filter by ASB"
-    // onClick={handleClick}
-    // />
-
-
-
 };
