@@ -1,9 +1,17 @@
 import * as React from 'react';
-import { TextField } from '@fluentui/react/lib/TextField';
 import { List } from '@fluentui/react/lib/List';
 import { ITheme, mergeStyleSets, getFocusStyle } from '@fluentui/react/lib/Styling';
 import { useConst } from '@fluentui/react-hooks';
 import { useTheme } from '@fluentui/react/lib/Theme';
+import { Icon, Stack, TextField } from '@fluentui/react';
+import { getTheme } from '@fluentui/react';
+import VerticalSidebar from './VerticalSidebar';
+import { useNavigate } from 'react-router-dom';
+
+
+import { initializeIcons } from '@fluentui/font-icons-mdl2';
+initializeIcons();
+
 
 export interface IExampleItem {
     name: string;
@@ -87,12 +95,21 @@ const generateStyles = (theme: ITheme, isOpen: boolean) => {
       left: isOpen ? 260 : 0, // move button with sidebar
       zIndex: 1000,
       cursor: 'pointer',
+      color: 'white',
+      display: 'none'
     },
   });
 };
 
 export const ToDoBody: React.FC = () => {
-  const originalItems = useConst(() => createListItems());
+  const navigate = useNavigate();
+  
+  const onWarningClick = () => {
+      navigate('/report-missing-item');
+  };
+  
+  
+const originalItems = useConst(() => createListItems());
   const [items, setItems] = React.useState<IExampleItem[]>(originalItems);
   const [isOpen, setIsOpen] = React.useState(true); // sidebar open/close
   const [selectedItem, setSelectedItem] = React.useState<IExampleItem | null>(null);
@@ -102,7 +119,7 @@ export const ToDoBody: React.FC = () => {
   const onRenderCell = React.useCallback(
     (item?: IExampleItem, index?: number): JSX.Element | null => {
       if (!item) return null;
-      return (
+      return (      
         <div
           className={classNames.itemCell}
           data-is-focusable={true}
@@ -145,10 +162,95 @@ export const ToDoBody: React.FC = () => {
     );
   };
 
+  const handleIconClick = (location: string) => {
+  onFilterChanged(undefined as any, location);
+};
+  
+
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
+    <div style={{ display: 'flex', height: '100vh',  border: '2px solid black' }}>
+
+        <span
+        onClick={() => handleIconClick('Library')}
+        style={{
+            position: 'absolute',
+            top: '30%',
+            left: '52%',
+            width: '10vw',
+            height: '4vw',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            display: 'inline-block',
+        }}
+        ></span>
+
+        <span
+        onClick={() => handleIconClick('AQ')}
+        style={{
+            position: 'absolute',
+            top: '30%',
+            left: '65%',
+            width: '12vw',
+            height: '10vw',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            display: 'inline-block',
+        }}
+        ></span>
+
+       <span
+        onClick={() => handleIconClick('WMC')}
+        style={{
+            position: 'absolute',
+            top: '32%',
+            left: '35%',
+            width: '10vw',
+            height: '3vw',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            display: 'inline-block',
+        }}
+        ></span>
+
+        <span
+        onClick={() => handleIconClick('Robert C Brown Hall')}
+        style={{
+            position: 'absolute',
+            top: '12%',
+            left: '64%',
+            width: '8vw',
+            height: '9vw',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            display: 'inline-block',
+        }}
+        ></span>
+
+        <span
+        onClick={() => handleIconClick('Education Building')}
+        style={{
+            position: 'absolute',
+            top: '11.5%',
+            left: '72%',
+            width: '7.5vw',
+            height: '9vw',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            display: 'inline-block',
+        }}
+        ></span>
+
+
+       {/* <button onClick={onFilterChanged} text = "filter ASB"} /> */}
       {/* Sidebar */}
-      <div style={{ position: 'relative' }}>
+      
+      
+      
+      <div style={{ position: 'relative', marginLeft: '3.3vw'}}>
+        <VerticalSidebar
+            onSearchClick={() => setIsOpen(!isOpen)}
+            onWarningClick={onWarningClick}
+        />
         <div className={classNames.toggleButton} onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? '⏴' : '⏵'}
         </div>
@@ -184,4 +286,33 @@ export const ToDoBody: React.FC = () => {
       )}
     </div>
   );
+
+  
+
+
+
+
+    /*MAP INTERACTION */
+
+    // const handleClick = () => {
+    // const presetValue = "ASB"; // your predetermined string
+    // onFilterChanged(undefined as any, presetValue);
+    // };
+
+    // Your component
+    // return (
+    // <div onClick={handleClick} style={{ cursor: "pointer" }}>
+    //     Click here to filter
+    // </div>
+    // );
+
+    // <IconButton
+    // iconProps={{ iconName: 'Filter' }}   // any Fluent UI icon
+    // title="Filter by ASB"
+    // ariaLabel="Filter by ASB"
+    // onClick={handleClick}
+    // />
+
+
+
 };

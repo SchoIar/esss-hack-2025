@@ -1,0 +1,66 @@
+body {
+    background-color: rgb(231, 229, 226);
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    background-size: cover;         /* scale to cover screen */
+    background-position: center;    /* center the image */
+    background-repeat: no-repeat;   /* prevent tiling */
+}
+
+.mainBoxWrapper {
+    margin-top: 10vw;
+    width: 50vw;
+    height: 30vw;
+    max-width: 1000px;
+    max-height: 1000px;
+    border: 8;
+    border-color: black;
+    border-style: solid;
+    background-color: white;
+}
+
+.mainBox {
+    display: flex;
+    flex-direction: row;
+    margin-top: -1vw;
+}
+
+.contentContainer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10vw;
+}
+
+.textSide {
+    margin-top: 1.5vw;
+    margin-bottom: 1.5vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.bottomButtonWrapper {
+    margin-top: 3vw;
+}
+
+.bottomButtons {
+    display: flex;
+    justify-content: space-between;
+    margin-left: 7vw;
+    width: 13vw;
+
+}
+
+.imageBox {
+    width: 15vw;
+    height: 15vw;
+    border: 1px;
+    border-color: black;
+    border-style: solid;
+}
+
+.imageBoxWrapper {
+    margin-top: 1vw;
+    margin-left: 2vw
+}
