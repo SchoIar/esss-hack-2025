@@ -5,8 +5,6 @@ import { ReportPage } from './ReportPage';
 
 function App() {
   return (
-  
-    
     <BrowserRouter>
       <Routes>
           <Route path="/" Component={ ToDoBody }/>
